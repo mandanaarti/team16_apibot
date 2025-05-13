@@ -121,6 +121,3 @@ http://localhost:4040/inspect/http
    - Use the update-webhook-url endpoint to update it to the NGROK URL.
 
 Now your frontend is connected to your backend running locally via NGROK. You can interact with buttons and send messages directly from SwiftChat frontend to your Node.js backend.
-
-## 📬 Support
-For any issues or questions, please contact the repository maintainer (Dhairya Sachdeva).
