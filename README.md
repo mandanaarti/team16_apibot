@@ -61,6 +61,14 @@ This will create the necessary tables and populate them with dummy data.
 
 ## ✅ Setup Complete
 
+## 📹 Demo Video
+
+[▶️ Watch the demo](https://drive.google.com/file/d/1629PmJgL7xZj0qyiAROf3BTUFredwbYW/view?usp=sharing)
+
+## Swiftchat postman
+
+[📋 View Postman Documentation](https://documenter.getpostman.com/view/20587790/UyrGCuhH#ecd8fd49-96ab-4ff4-8216-57539e20f742)
+
 ## 🚀 Running the Application
 
 ### Development Mode
