@@ -221,14 +221,23 @@ const klusterWebhook = async (userMobile, userMessage, messageType, messageBody)
           });
         } else {
           // Show score as a rich message (ScoreCard)
-          const { ScoreCard } = require('../../utils/message-types');
+          // const { ScoreCard } = require('../../utils/message-types');
+          // responseMessage.push(
+          //   new ScoreCard({
+          //     performance: newScore === quiz.length ? 'high' : 'medium',
+          //     text1: 'Quiz Complete!',
+          //     text2: `Your score: ${newScore}/${quiz.length}`,
+          //     score: `${Math.round((newScore / quiz.length) * 100)}`,
+          //   }, 'Share your score!')
+          // );
+          // Add a message for total correct score
           responseMessage.push(
-            new ScoreCard({
-              performance: newScore === quiz.length ? 'high' : 'medium',
-              text1: 'Quiz Complete!',
-              text2: `Your score: ${newScore}/${quiz.length}`,
-              score: `${Math.round((newScore / quiz.length) * 100)}`,
-            }, 'Share your score!')
+            new Text(`You answered ${newScore} out of ${quiz.length} questions correctly!`)
+          );
+          responseMessage.push(
+            new Text(
+              `Quiz Complete!\nYour score: ${newScore}/${quiz.length}\nYou answered ${newScore} out of ${quiz.length} questions correctly!`
+            )
           );
           await model.updateUserContext(userMobile, {
             stepName: 'entryPoint',
