@@ -15,6 +15,8 @@ const {
   invalidWebMessageButtons, invalidWebViewMoreMessageButtons,
 } = require('../../utils/message-samples');
 const { getUserMessage } = require('../../utils/swiftchat-helpers');
+const fetchQuizQuestions = require('../../utils/fetch-quiz'); // Add this import at the top
+// const { fetchQuizQuestions } = require('../../utils/fetch-quiz');
 
 const klusterWebhook = async (userMobile, userMessage, messageType, messageBody) => {
   const waNumber = null;
@@ -91,6 +93,22 @@ const klusterWebhook = async (userMobile, userMessage, messageType, messageBody)
       );
       return;
     }
+
+    // Add this block before checking userContext.stepName
+    if (userMessage && userMessage.trim().toLowerCase() === 'start quiz') {
+      await model.updateUserContext(userMobile, {
+        stepName: 'awaitCategoryDifficulty',
+        stepData: {},
+        userMedium,
+      });
+      responseMessage.push(
+        new Text('Please enter the quiz category and difficulty in the format: <category>, <difficulty>. Example: 21, easy')
+      );
+      await model.sendMessage(waNumber, userMobile, responseMessage);
+      await model.releaseMessageLock(userMobile, lockId);
+      return;
+    }
+
     let isPersistentMenu = messageType === 'persistent_menu_response';
     if (userContext.stepName === 'entryPoint' && isPersistentMenu) {
       isPersistentMenu = false;
@@ -110,6 +128,116 @@ const klusterWebhook = async (userMobile, userMessage, messageType, messageBody)
       userMessage = await getUserMessage(messageType, messageBody, [...invalidWebMessageButtons, ...invalidWebViewMoreMessageButtons]);
     }
     
+    if (userContext.stepName === 'awaitCategoryDifficulty') {
+      try {
+        // Parse user input for category and difficulty
+        const [category, difficulty] = userMessage.split(',').map(s => s.trim());
+        if (!category || !difficulty) {
+          responseMessage.push(new Text('Please reply in the format: <category>, <difficulty>. Example: 21, easy'));
+          await model.sendMessage(waNumber, userMobile, responseMessage);
+          await model.releaseMessageLock(userMobile, lockId);
+          return;
+        }
+        const quizData = await fetchQuizQuestions(category, difficulty);
+        if (quizData.results && quizData.results.length > 0) {
+          // Store quiz state
+          await model.updateUserContext(userMobile, {
+            stepName: 'awaitQuizAnswer',
+            stepData: {
+              quiz: quizData.results,
+              current: 0,
+              score: 0,
+            },
+            userMedium,
+          });
+          // Prepare options as buttons
+          const q = quizData.results[0];
+          const options = [...q.incorrect_answers, q.correct_answer]
+            .sort(() => Math.random() - 0.5);
+          const buttons = options.map((opt, i) => ({
+            type: 'solid',
+            body: `${String.fromCharCode(65 + i)}) ${opt}`,
+            reply: `${String.fromCharCode(65 + i)}`,
+          }));
+          responseMessage.push(
+            new (require('../../utils/message-types').Button)(
+              new Text(`Q1: ${q.question}`),
+              buttons
+            )
+          );
+        } else {
+          responseMessage.push(new Text('No questions found for this category and difficulty.'));
+        }
+        await model.sendMessage(waNumber, userMobile, responseMessage);
+      } catch (error) {
+        logger.error('Quiz fetch error', error);
+        responseMessage.push(new Text('Failed to fetch quiz questions. Please try again later.'));
+        await model.sendMessage(waNumber, userMobile, responseMessage);
+      }
+      await model.releaseMessageLock(userMobile, lockId);
+      return;
+    }
+
+    if (userContext.stepName === 'awaitQuizAnswer') {
+      try {
+        const { quiz, current, score } = userContext.stepData;
+        const q = quiz[current];
+        const correct = q.correct_answer;
+        const options = [...q.incorrect_answers, q.correct_answer].sort();
+        let userAns = userMessage.trim().toUpperCase();
+        let idx = userAns.charCodeAt(0) - 65;
+        let isCorrect = options[idx] && options[idx] === correct;
+        let newScore = score + (isCorrect ? 1 : 0);
+        let reply = isCorrect ? '✅ Correct!' : `❌ Wrong! Correct answer: ${correct}`;
+        responseMessage.push(new Text(reply));
+        // Next question or finish
+        if (current + 1 < quiz.length) {
+          const nextQ = quiz[current + 1];
+          const nextOptions = [...nextQ.incorrect_answers, nextQ.correct_answer]
+            .sort(() => Math.random() - 0.5);
+          const buttons = nextOptions.map((opt, i) => ({
+            type: 'solid',
+            body: `${String.fromCharCode(65 + i)}) ${opt}`,
+            reply: `${String.fromCharCode(65 + i)}`,
+          }));
+          responseMessage.push(
+            new (require('../../utils/message-types').Button)(
+              new Text(`Q${current + 2}: ${nextQ.question}`),
+              buttons
+            )
+          );
+          await model.updateUserContext(userMobile, {
+            stepName: 'awaitQuizAnswer',
+            stepData: { quiz, current: current + 1, score: newScore },
+            userMedium,
+          });
+        } else {
+          // Show score as a rich message (ScoreCard)
+          const { ScoreCard } = require('../../utils/message-types');
+          responseMessage.push(
+            new ScoreCard({
+              performance: newScore === quiz.length ? 'high' : 'medium',
+              text1: 'Quiz Complete!',
+              text2: `Your score: ${newScore}/${quiz.length}`,
+              score: `${Math.round((newScore / quiz.length) * 100)}`,
+            }, 'Share your score!')
+          );
+          await model.updateUserContext(userMobile, {
+            stepName: 'entryPoint',
+            stepData: {},
+            userMedium,
+          });
+        }
+        await model.sendMessage(waNumber, userMobile, responseMessage);
+      } catch (error) {
+        logger.error('Quiz answer error', error);
+        responseMessage.push(new Text('Something went wrong. Please try again.'));
+        await model.sendMessage(waNumber, userMobile, responseMessage);
+      }
+      await model.releaseMessageLock(userMobile, lockId);
+      return;
+    }
+
     switch (userContext.stepName) {
       case 'entryPoint':
       case 'awaitMedium':
@@ -134,4 +262,5 @@ const klusterWebhook = async (userMobile, userMessage, messageType, messageBody)
 
 module.exports = {
   klusterWebhook,
+  fetchQuizQuestions,
 };
