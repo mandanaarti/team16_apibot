@@ -185,8 +185,16 @@ const klusterWebhook = async (userMobile, userMessage, messageType, messageBody)
         const correct = q.correct_answer;
         const options = [...q.incorrect_answers, q.correct_answer].sort();
         let userAns = userMessage.trim().toUpperCase();
-        let idx = userAns.charCodeAt(0) - 65;
+        // let idx = userAns.charCodeAt(0) - 65;
+        let idx = userAns-1;
         let isCorrect = options[idx] && options[idx] === correct;
+        console.log("Correct answer:", correct);
+        console.log("value of current:", current);
+        console.log("Step Data:", userContext.stepData);
+        console.log("Options:", options);
+        console.log("User answer index:", idx);
+        console.log("User answer option:", options[idx]);
+        console.log("User answer:", userAns);
         let newScore = score + (isCorrect ? 1 : 0);
         let reply = isCorrect ? '✅ Correct!' : `❌ Wrong! Correct answer: ${correct}`;
         responseMessage.push(new Text(reply));
