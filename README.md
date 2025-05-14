@@ -1,3 +1,10 @@
+# BrainyBuds 
+
+An exciting personalised learning adventure experience to embark upon journey of knowledge discovery to create fun and interactive quizzes based on child's unique interest and learning style
+
+## Presentation reference 
+- **link**: https://github.com/mandanaarti/team16_apibot/blob/develop/Team_16-Brainy_Buds_Presentation.pptx
+
 # Chat Bot API
 
 A Node.js backend service for handling chatbot interactions using SwiftChat's bot platform, with Redis and PostgreSQL integration.
